@@ -201,4 +201,67 @@ void KeyMapTests::parseKey_plusSymbol_parsesAsAsciiKey()
   QCOMPARE(key, static_cast<KeyID>('+'));
 }
 
+void KeyMapTests::findBestKey_preferFewerModifiersExactMatch()
+{
+  KeyMap keyMap;
+  KeyMap::KeyEntryList entryList;
+
+  // Keycode 31 requiring AltGr + Shift for 'bar' (0x7c)
+  KeyMap::KeyItem item31;
+  item31.m_id = 0x7c;
+  item31.m_button = 31;
+  item31.m_required = KeyModifierAltGr | KeyModifierShift;
+  item31.m_sensitive = KeyModifierAltGr | KeyModifierShift;
+  KeyMap::KeyItemList itemList31{item31};
+  entryList.push_back(itemList31);
+
+  // Keycode 94 (LSGT) requiring only AltGr for 'bar' (0x7c)
+  KeyMap::KeyItem item94;
+  item94.m_id = 0x7c;
+  item94.m_button = 94;
+  item94.m_required = KeyModifierAltGr;
+  item94.m_sensitive = KeyModifierAltGr | KeyModifierShift;
+  KeyMap::KeyItemList itemList94{item94};
+  entryList.push_back(itemList94);
+
+  // When desiredState is AltGr, item94 (requiring only AltGr) matches exact and is chosen over item31
+  KeyModifierMask desiredState = KeyModifierAltGr;
+  QCOMPARE(keyMap.findBestKey(entryList, desiredState), 1);
+}
+
+void KeyMapTests::mapKey_commandMode_preferFewerModifiers()
+{
+  KeyMap keyMap;
+
+  // Keycode 31 requiring AltGr + Shift for 'bar' (0x7c)
+  KeyMap::KeyItem item31;
+  item31.m_id = 0x7c;
+  item31.m_button = 31;
+  item31.m_group = 0;
+  item31.m_required = KeyModifierAltGr | KeyModifierShift;
+  item31.m_sensitive = KeyModifierAltGr | KeyModifierShift;
+  keyMap.addKeyEntry(item31);
+
+  // Keycode 94 (LSGT) requiring only AltGr for 'bar' (0x7c)
+  KeyMap::KeyItem item94;
+  item94.m_id = 0x7c;
+  item94.m_button = 94;
+  item94.m_group = 0;
+  item94.m_required = KeyModifierAltGr;
+  item94.m_sensitive = KeyModifierAltGr | KeyModifierShift;
+  keyMap.addKeyEntry(item94);
+
+  keyMap.finish();
+
+  KeyMap::Keystrokes strokes;
+  KeyMap::ModifierToKeys activeModifiers;
+  KeyModifierMask currentState = 0;
+  KeyModifierMask desiredMask = KeyModifierAltGr;
+
+  // When mapping 0x7c in command mode (desiredMask = AltGr), keycode 94 (LSGT) must be chosen over keycode 31
+  const KeyMap::KeyItem *result = keyMap.mapKey(strokes, 0x7c, 0, activeModifiers, currentState, desiredMask, false, "en");
+  QVERIFY(result != nullptr);
+  QCOMPARE(result->m_button, static_cast<KeyButton>(94));
+}
+
 QTEST_MAIN(KeyMapTests)

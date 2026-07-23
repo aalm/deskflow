@@ -637,6 +637,9 @@ void XWindowsKeyState::updateKeysymMapXKB(deskflow::KeyMap &keyMap)
           continue;
         }
         int level = mapEntry->level;
+        if (level < 0 || level >= XkbKeyGroupWidth(m_xkb, keycode, eGroup) || level >= type->num_levels) {
+          continue;
+        }
 
         // set required modifiers for this item
         item.m_required = mapEntry->mods.mask;
@@ -766,6 +769,9 @@ void XWindowsKeyState::updateKeysymMapXKB(deskflow::KeyMap &keyMap)
 
         // add entry
         item.m_id = XDGKeyUtil::mapKeySymToKeyID(keysym);
+        if (item.m_id == kKeyNone) {
+          continue;
+        }
         keyMap.addKeyEntry(item);
         if (group == 0) {
           m_keyCodeFromKey.insert(std::make_pair(item.m_id, keycode));
@@ -806,6 +812,9 @@ bool XWindowsKeyState::hasModifiersXKB() const
             continue;
           }
           int level = ((j == -1) ? 0 : type->map[j].level);
+          if (level < 0 || level >= XkbKeyGroupWidth(m_xkb, keycode, group) || level >= type->num_levels) {
+            continue;
+          }
           const XkbAction *action = XkbKeyActionEntry(m_xkb, keycode, level, group);
           if (action->type == XkbSA_SetMods || action->type == XkbSA_LockMods) {
             return true;

@@ -486,8 +486,9 @@ const KeyMap::KeyItem *KeyMap::mapCommandKey(
   }
   const KeyGroupTable &keyGroupTable = i->second;
 
-  // find the first key that generates this KeyID
+  // find the best key that generates this KeyID
   const KeyItem *keyItem = nullptr;
+  int32_t bestReqMods = 32;
   const auto numGroups = getNumGroups();
   for (int32_t groupOffset = 0; groupOffset < numGroups; ++groupOffset) {
     const auto effectiveGroup = getEffectiveGroup(group, groupOffset);
@@ -507,8 +508,11 @@ const KeyMap::KeyItem *KeyMap::mapCommandKey(
       if ((item.m_required & desiredShiftMask) == (item.m_sensitive & desiredShiftMask) &&
           ((requiredIgnoreShiftMask & desiredMask) == requiredIgnoreShiftMask)) {
         LOG_VERBOSE("found key in group %d", effectiveGroup);
-        keyItem = &item;
-        break;
+        int32_t reqMods = getNumModifiers(item.m_required);
+        if (reqMods < bestReqMods) {
+          bestReqMods = reqMods;
+          keyItem = &item;
+        }
       }
     }
     if (keyItem) {
@@ -640,13 +644,23 @@ const KeyMap::KeyItem *KeyMap::mapModifierKey(
 int32_t KeyMap::findBestKey(const KeyEntryList &entryList, KeyModifierMask desiredState) const
 {
   // check for an item that can accommodate the desiredState exactly
+  int32_t bestExactIndex = -1;
+  int32_t bestExactMods = 32;
   for (int32_t i = 0; i < (int32_t)entryList.size(); ++i) {
     const KeyItem &item = entryList[i].back();
     if ((item.m_required & desiredState) == item.m_required &&
         (item.m_required & desiredState) == (item.m_sensitive & desiredState)) {
-      LOG_VERBOSE("best key index %d of %d (exact)", i + 1, entryList.size());
-      return i;
+      int32_t reqMods = getNumModifiers(item.m_required);
+      if (reqMods < bestExactMods) {
+        bestExactMods = reqMods;
+        bestExactIndex = i;
+      }
     }
+  }
+
+  if (bestExactIndex != -1) {
+    LOG_VERBOSE("best key index %d of %d (exact)", bestExactIndex + 1, entryList.size());
+    return bestExactIndex;
   }
 
   // choose the item that requires the fewest modifier changes

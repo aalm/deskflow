@@ -23,6 +23,8 @@ private Q_SLOTS:
   void mapkey();
   void parseModifiers_plusKey_keepsPlusAsKey();
   void parseKey_plusSymbol_parsesAsAsciiKey();
+  void findBestKey_preferFewerModifiersExactMatch();
+  void mapKey_commandMode_preferFewerModifiers();
 
 private:
   Log m_log;
